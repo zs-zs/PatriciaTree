@@ -13,10 +13,6 @@ StringMatcher.prototype.peek = function () {
 	return this.inputString[this.nextCharIndex];
 };
 
-StringMatcher.prototype.char = function () {
-	return this.inputString[this.nextCharIndex - 1];
-};
-
 StringMatcher.prototype.end = function () {
 	return this.nextCharIndex >= this.inputString.length;
 };

@@ -1,4 +1,5 @@
 var StringMatcher = require('./stringMatcher');
+var LeafIterator = require('./leafIterator');
 
 function Node (options) {
 	options = options || {};
@@ -123,52 +124,43 @@ PatriciaTree.prototype.contains = function(itemString) {
 	return this.frequency(itemString) !== 0;
 };
 
-var getCompletions = function (fromNode, lastMatch) {
-	debugger;
-	var processingQueue = [{node: fromNode, level: 0}];
+var _getCompletions = function (fromNode, remainingPart) {
+	var getNextLeaf = new LeafIterator(fromNode, function getChildren (node) {
+		return node.children;
+	});
+	var leaf;
 	var completions = [];
-
-	while(processingQueue.length !== 0) {
-		var queuedItem = processingQueue.shift();
-		var activeNode = queuedItem.node;
-		var level = queuedItem.level;
-
-		if(!completions[level])
-			completions[level] = [];
-		completions[level].push(activeNode.label);
-
-		for(var hash in activeNode.children) {
-			if(activeNode.children.hasOwnProperty(hash)) {
-				processingQueue.push({
-					node: activeNode.children[hash],
-					level: level + 1
-				});
-			}
-		}
+	while(leaf = getNextLeaf()) {
+		var completionString = remainingPart;
+		for (var i = 1; i < leaf.path.length; i++) {
+			completionString += leaf.path[i].label;
+		};
+		completions.push(completionString);
 	}
+	return completions;
+};
 
-	var result = completions.reduce(function(previous, current) {
-		var result = [];
-		for(var i = 0; i<previous.length; i++) {
-			for(var j = 0; j<current.length; j++) {
-				result.push(previous[i]+current[j]);
-			}
+PatriciaTree.prototype.getCompletions = function(prefix) {
+	return progressFrom.call(this, this.root, prefix, function(itemMatcher, targetNode, lastNode) {
+		switch(itemMatcher.lastMatch.type) {
+			case 'fullMatch':
+				return targetNode.isTerminal ? [''] : _getCompletions(targetNode, '');
+			case 'endOfStream':
+				var matchedPart = targetNode.label.substring(0, itemMatcher.lastMatch.length);
+				var remainingPart = targetNode.label.substring(itemMatcher.lastMatch.length);
+				var fromNode = lastNode.routeByHash(matchedPart);
+				return _getCompletions(fromNode, remainingPart);
+			case 'mismatch':     return []; // -> in a mismatch case, we can't make an autocomplete
+			case 'endOfPattern': return []; // -> in this case the tree doesn't contain the prefix
+			case undefined:      return [];
 		}
-		return result;
-  	}, ['']);
-  	return result;
+	});
 };
 
 PatriciaTree.prototype.complete = function(prefix) {
-	return progressFrom.call(this, this.root, prefix, function(itemMatcher, _, lastNode) {
-		switch(itemMatcher.lastMatch.type) {
-			case 'fullMatch':    return targetNode.isTerminal ? [prefix] : null;
-			case 'mismatch':     return null;     // in a mismatch case, we can't make an autocomplete
-			case 'endOfPattern': return null;
-			case 'endOfStream':  return getCompletions(lastNode, itemMatcher.lastMatch);
-			case undefined:      return null;
-		}
-	});	
+	return this.getCompletions(prefix).map(function(completion) {
+		return prefix + completion;
+	});
 };
 
 module.exports = PatriciaTree;
