@@ -1,0 +1,16 @@
+{
+	"author": "zs-zs",
+	"name": "patricia-tree",
+	"description": "Patricia (or Radix) tree with autocomplete support",
+	"version": "0.1.0",
+	"repository": {
+		"type": "git",
+		"url": "git://github.com:zs-zs/PatriciaTree.git"
+	},
+	"main": "./patricia",
+	"keywords": [
+		"autocomplete",
+		"tree",
+		"prefix"
+	]
+}
